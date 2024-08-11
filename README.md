@@ -40,7 +40,7 @@ wget https://downloads.openwrt.org/releases/23.05.4/targets/mediatek/filogic/ope
 python3 patch_itb.py openwrt-23.05.4-mediatek-filogic-cmcc_rax3000m-squashfs-sysupgrade.itb patched.itb
 ```
 
-1. (Optional) Verify the patched dts
+3. (Optional) Verify the patched dts
 
 ```bash
 diff build/orig.dts build/patched.dts
