@@ -30,6 +30,7 @@ Homebrew: `brew install u-boot-tools dtc`
 
 ```bash
 git clone https://github.com/cyyself/mt7981-usb-sfp-patcher.git
+cd mt7981-usb-sfp-patcher
 ```
 
 2. Patch the firmware
