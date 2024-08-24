@@ -1,6 +1,6 @@
 # mt7981-usb-sfp-patcher
 
-Patch existing OpenWRT firmware (sysupgrade.itb) to use the USB3 on the MT7981 to connect to 2500Base-X SFP module.
+Patch existing OpenWRT firmware to use the USB3 on the MT7981 to connect to 2500Base-X SFP module. Support both OpenWrt U-Boot layout and custom U-Boot layout
 
 ## Tested Device
 
@@ -8,7 +8,8 @@ Patch existing OpenWRT firmware (sysupgrade.itb) to use the USB3 on the MT7981 t
 
 ## Tested OpenWRT Versions
 
-- 23.05.4
+- OpenWRT 23.05.4
+- ImmortalWrt 23.05-SNAPSHOT (r27946-868b12b200)
 
 ## How to use
 
@@ -33,14 +34,16 @@ git clone https://github.com/cyyself/mt7981-usb-sfp-patcher.git
 cd mt7981-usb-sfp-patcher
 ```
 
-2. Patch the firmware
+#### For OpenWRT Origin version
+
+1. Patch the firmware
 
 ```bash
 wget https://downloads.openwrt.org/releases/23.05.4/targets/mediatek/filogic/openwrt-23.05.4-mediatek-filogic-cmcc_rax3000m-squashfs-sysupgrade.itb
 python3 patch_itb.py openwrt-23.05.4-mediatek-filogic-cmcc_rax3000m-squashfs-sysupgrade.itb patched.itb
 ```
 
-3. (Optional) Verify the patched dts
+2. (Optional) Verify the patched dts
 
 ```bash
 diff build/orig.dts build/patched.dts
@@ -71,9 +74,34 @@ diff build/orig.dts build/patched.dts
 \ No newline at end of file
 ```
 
-4. Use `sysupgrade -F` or LuCI to flash the patched firmware
+3. Use `sysupgrade -F` or LuCI to flash the patched firmware
 
 It's normal to get a warning "Image check failed", but "Force upgrade" should work.
+
+
+#### For ImmortalWrt with custom U-Boot layout
+
+1. Dump [kernel raw image](https://openwrt.org/docs/techref/flash.layout#partitioning_of_nand_flash-based_devices) from device
+
+```sh
+ssh root@192.168.1.1 dd if=/dev/ubi0_0 of=/tmp/kernel
+scp -O root@192.168.1.1:/tmp/kernel ./kernel
+```
+
+2. Patch the kernel
+
+```sh
+python3 patch_itb.py ./kernel ./kernel-patched
+```
+
+3. Flash the patched kernel
+
+```sh
+scp -O ./kernel-patched root@192.168.1.1:/tmp/
+ssh root@192.168.1.1 ubiupdatevol /dev/ubi0_0 /tmp/kernel-patched
+```
+
+Now reboot your device.
 
 ## Limitation
 
