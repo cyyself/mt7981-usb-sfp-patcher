@@ -130,7 +130,6 @@ if __name__ == '__main__':
     orig_dtb_bytes = open(f"{build_dir}/orig.dtb", "rb").read()
     orig_sha1 = get_sha1_string(orig_dtb_bytes)
     orig_crc32 = get_crc32_string(orig_dtb_bytes)
-    dtb_offset = None
     with open(f"{build_dir}/orig_itb.its", "r") as f:
         orig_itb_its = f.read()
         if orig_itb_its.find(orig_sha1) == -1:
@@ -142,16 +141,6 @@ if __name__ == '__main__':
         patched_sha1 = get_sha1_string(open(f"{build_dir}/patched.dtb", "rb").read())
         patched_crc32 = get_crc32_string(open(f"{build_dir}/patched.dtb", "rb").read())
         patched_itb_its = orig_itb_its.replace(orig_sha1, patched_sha1).replace(orig_crc32, patched_crc32)
-        # find dtb offset
-        itb_lines = patched_itb_its.splitlines()
-        data_position_idx = 0
-        for line in itb_lines:
-            if line.strip().startswith("data-position"):
-                if data_position_idx == FDT_OFFSET:
-                    dtb_offset = int(line.split()[2][1:-2], 16)
-                    break
-                data_position_idx += 1
-        assert dtb_offset is not None, "Failed to find dtb offset"
         with open(f"{build_dir}/patched_itb.its", "w") as f:
             f.write(patched_itb_its)
 
@@ -161,11 +150,12 @@ if __name__ == '__main__':
     # patch itb file
     itb_file = bytearray(open(itb_path, "rb").read())
     new_itb_header = open(f"{build_dir}/patched_itb.itb", "rb").read()
+    itb_file[0:len(new_itb_header)] = new_itb_header[:]
     new_dtb = open(f"{build_dir}/patched.dtb", "rb").read()
-    for i in range(len(new_itb_header)):
-        itb_file[i] = new_itb_header[i]
-    for i in range(len(new_dtb)):
-        itb_file[dtb_offset + i] = new_dtb[i]
+    dtb_offset = itb_file.find(orig_dtb_bytes)
+    assert dtb_offset != -1, "Failed to find dtb offset"
+    itb_file[dtb_offset:dtb_offset+len(new_dtb)] = new_dtb[:]
+
     with open(patched_path, "wb") as f:
         f.write(itb_file)
     
