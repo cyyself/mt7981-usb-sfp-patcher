@@ -85,7 +85,7 @@ def get_sha1_string(binary_file):
     sha1.update(binary_file)
     sha1_hex = sha1.hexdigest()
     assert len(sha1_hex) == 40, "Invalid sha1"
-    sha1_32group = [sha1_hex[i:i+8] for i in range(0, len(sha1_hex), 8)]
+    sha1_32group = [hex(int(sha1_hex[i:i+8], 16))[2:] for i in range(0, len(sha1_hex), 8)]
     return "<0x"+" 0x".join(sha1_32group) + ">"
 
 def get_crc32_string(binary_file):
