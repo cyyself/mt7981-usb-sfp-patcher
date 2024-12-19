@@ -17,7 +17,7 @@ def patch_dt(orig_dts_string):
     has_gmac0_symbol = False
     has_gmac1_symbol = False
     append_soc_to_path = False
-    mac1_phandle = None
+    mac1_params = dict()
     eth_path = ['/', 'ethernet@15100000']
     usb_path = ['/', 'usb@11200000']
     mac1_path = eth_path + ['mac@1']
@@ -49,8 +49,8 @@ def patch_dt(orig_dts_string):
                 out.append("\t" * append_soc_to_path + '			reg = <0x01>;')
                 out.append("\t" * append_soc_to_path + '			phy-mode = "2500base-x";')
                 out.append("\t" * append_soc_to_path + '			managed = "in-band-status";')
-                if mac1_phandle:
-                    out.append("\t" * append_soc_to_path + f'			phandle = <{mac1_phandle}>;')
+                for key, value in mac1_params.items():
+                    out.append("\t" * append_soc_to_path + f'			{key} = {value}')
                 out.append("\t" * append_soc_to_path + '		};')
                 ethernet_patched = True
             elif path == usb_path:
@@ -67,9 +67,10 @@ def patch_dt(orig_dts_string):
                 out.append(line)
             path.pop()
         elif path == mac1_path:
-            # find phandle for mac@1
-            if line.strip().startswith('phandle = <'):
-                mac1_phandle = line.strip().split(' ')[2][1:-2]
+            # find everything except phy-mode and phy-handle for mac@1
+            key, value = line.strip().split(' = ')
+            if key not in ['phy-mode', 'phy-handle', 'compatible', 'reg']:
+                mac1_params[key] = value
         elif path == usb_path:
             # ignore usb 3.0
             key = line.strip().split(' ')[0]
