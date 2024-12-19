@@ -21,6 +21,7 @@ def patch_dt(orig_dts_string):
     eth_path = ['/', 'ethernet@15100000']
     usb_path = ['/', 'usb@11200000']
     mac1_path = eth_path + ['mac@1']
+    int_gbe_path = eth_path + ['mdio-bus', 'ethernet-phy@0']
     gmac0_string = "\t\tgmac0 = \"/ethernet@15100000/mac@0\";"
     gmac1_string = "\t\tgmac1 = \"/ethernet@15100000/mac@1\";"
     if "/soc/ethernet@15100000" in orig_dts_string:
@@ -28,6 +29,7 @@ def patch_dt(orig_dts_string):
         eth_path.insert(1, 'soc')
         usb_path.insert(1, 'soc')
         mac1_path.insert(1, 'soc')
+        int_gbe_path.insert(1, 'soc')
         gmac0_string = gmac0_string.replace("/ethernet@15100000", "/soc/ethernet@15100000")
         gmac0_string = gmac0_string.replace("\t\t", "\t\t\t")
         gmac1_string = gmac1_string.replace("/ethernet@15100000", "/soc/ethernet@15100000")
@@ -37,7 +39,7 @@ def patch_dt(orig_dts_string):
         line = orig_dts_lines[line_idx]
         if line.strip().endswith('{'):
             path.append(line.strip()[:-1].strip())
-            if path != mac1_path:
+            if path != mac1_path and int_gbe_path != path[:len(int_gbe_path)]:
                 out.append(line)
         elif line.strip().endswith('};'):
             if path == eth_path:
@@ -61,7 +63,7 @@ def patch_dt(orig_dts_string):
                     out.append(gmac0_string)
                 if not has_gmac1_symbol:
                     out.append(gmac1_string)
-            if path != mac1_path:
+            if path != mac1_path and int_gbe_path != path[:len(int_gbe_path)]:
                 out.append(line)
             path.pop()
         elif path == mac1_path:
@@ -86,14 +88,15 @@ def patch_dt(orig_dts_string):
                 has_gmac0_symbol = True
             elif line.strip() == gmac1_string.strip():
                 has_gmac1_symbol = True
-            out.append(line)
+            if "/".join(int_gbe_path)[1:] not in line:
+                out.append(line)
         elif path == ['/']:
             # patch Model
             if line.strip().startswith('model = "'):
                 out.append(line.replace("\";", " with USB3SFP\";"))
             else:
                 out.append(line)
-        elif path != mac1_path:
+        elif path != mac1_path and int_gbe_path != path[:len(int_gbe_path)]:
             # ignore all mac@1
             out.append(line)
         line_idx += 1
@@ -112,7 +115,7 @@ def get_sha1_string(binary_file):
 
 def get_crc32_string(binary_file):
     crc32 = zlib.crc32(binary_file)
-    return f"<0x{crc32:08x}>"
+    return f"<0x{crc32:x}>"
 
 if __name__ == '__main__':
     import sys
