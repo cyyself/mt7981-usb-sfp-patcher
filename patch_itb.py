@@ -16,37 +16,59 @@ def patch_dt(orig_dts_string):
     line_idx = 0
     has_gmac0_symbol = False
     has_gmac1_symbol = False
+    append_soc_to_path = False
+    mac1_phandle = None
+    eth_path = ['/', 'ethernet@15100000']
+    usb_path = ['/', 'usb@11200000']
+    mac1_path = eth_path + ['mac@1']
+    gmac0_string = "\t\tgmac0 = \"/ethernet@15100000/mac@0\";"
+    gmac1_string = "\t\tgmac1 = \"/ethernet@15100000/mac@1\";"
+    if "/soc/ethernet@15100000" in orig_dts_string:
+        append_soc_to_path = True
+        eth_path.insert(1, 'soc')
+        usb_path.insert(1, 'soc')
+        mac1_path.insert(1, 'soc')
+        gmac0_string = gmac0_string.replace("/ethernet@15100000", "/soc/ethernet@15100000")
+        gmac0_string = gmac0_string.replace("\t\t", "\t\t\t")
+        gmac1_string = gmac1_string.replace("/ethernet@15100000", "/soc/ethernet@15100000")
+        gmac1_string = gmac1_string.replace("\t\t", "\t\t\t")
     path = []
     while line_idx < len(orig_dts_lines):
         line = orig_dts_lines[line_idx]
         if line.strip().endswith('{'):
             path.append(line.strip()[:-1].strip())
-            if path != ['/', 'ethernet@15100000', 'mac@1']:
+            if path != mac1_path:
                 out.append(line)
         elif line.strip().endswith('};'):
-            if path == ['/', 'ethernet@15100000']:
+            if path == eth_path:
                 # at the end of ethernet@15100000, add the mac@1 node
-                out.append('		mac@1 {')
-                out.append('			compatible = "mediatek,eth-mac";')
-                out.append('			reg = <0x01>;')
-                out.append('			phy-mode = "2500base-x";')
-                out.append('			managed = "in-band-status";')
-                out.append('		};')
+                out.append("\t" * append_soc_to_path + '		mac@1 {')
+                out.append("\t" * append_soc_to_path + '			compatible = "mediatek,eth-mac";')
+                out.append("\t" * append_soc_to_path + '			reg = <0x01>;')
+                out.append("\t" * append_soc_to_path + '			phy-mode = "2500base-x";')
+                out.append("\t" * append_soc_to_path + '			managed = "in-band-status";')
+                if mac1_phandle:
+                    out.append("\t" * append_soc_to_path + f'			phandle = <{mac1_phandle}>;')
+                out.append("\t" * append_soc_to_path + '		};')
                 ethernet_patched = True
-            elif path == ['/', 'usb@11200000']:
+            elif path == usb_path:
                 # at the end of usb@11200000, add the mediatek,u3p-dis-msk property
-                out.append(f"		mediatek,u3p-dis-msk = <0x01>;")
+                out.append("\t" * append_soc_to_path + "		mediatek,u3p-dis-msk = <0x01>;")
                 usb_patched = True
             elif path == ['/', '__symbols__']:
                 # add gmac0 and gmac1 symbols if they are not present
                 if not has_gmac0_symbol:
-                    out.append('		gmac0 = "/ethernet@15100000/mac@0";')
+                    out.append(gmac0_string)
                 if not has_gmac1_symbol:
-                    out.append('		gmac1 = "/ethernet@15100000/mac@1";')
-            if path != ['/', 'ethernet@15100000', 'mac@1']:
+                    out.append(gmac1_string)
+            if path != mac1_path:
                 out.append(line)
             path.pop()
-        elif path == ['/', 'usb@11200000']:
+        elif path == mac1_path:
+            # find phandle for mac@1
+            if line.strip().startswith('phandle = <'):
+                mac1_phandle = line.strip().split(' ')[2][1:-2]
+        elif path == usb_path:
             # ignore usb 3.0
             key = line.strip().split(' ')[0]
             if key == 'phys':
@@ -54,15 +76,15 @@ def patch_dt(orig_dts_string):
                 usb_phy_list_r = line.rfind('>')
                 usb_phy_list = line[usb_phy_list_l+1:usb_phy_list_r].split()
                 assert len(usb_phy_list) == 4, 'usb phys should have 4 entries'
-                out.append(f"		phys = <{" ".join(usb_phy_list[:2])}>;")
+                out.append("\t" * append_soc_to_path + f"		phys = <{" ".join(usb_phy_list[:2])}>;")
             elif key != 'mediatek,u3p-dis-msk':
                 # ignore mediatek,u3p-dis-msk
                 out.append(line)
         elif path == ['/', '__symbols__']:
             # check if gmac0 and gmac1 are present
-            if line.strip() == "gmac0 = \"/ethernet@15100000/mac@0\";":
+            if line.strip() == gmac0_string.strip():
                 has_gmac0_symbol = True
-            elif line.strip() == "gmac1 = \"/ethernet@15100000/mac@1\";":
+            elif line.strip() == gmac1_string.strip():
                 has_gmac1_symbol = True
             out.append(line)
         elif path == ['/']:
@@ -71,7 +93,7 @@ def patch_dt(orig_dts_string):
                 out.append(line.replace("\";", " with USB3SFP\";"))
             else:
                 out.append(line)
-        elif path != ['/', 'ethernet@15100000', 'mac@1']:
+        elif path != mac1_path:
             # ignore all mac@1
             out.append(line)
         line_idx += 1
