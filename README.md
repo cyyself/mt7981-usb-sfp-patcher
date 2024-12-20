@@ -4,10 +4,12 @@ Patch existing OpenWRT firmware to use the USB3 on the MT7981 to connect to 2500
 
 ## Tested Device
 
-- CMCC RAX3000M
+- CMCC RAX3000M (3x1G ETH + 2.5G SFP from USB)
+- Cudy TR3000 (2.5G ETH + 2.5G SFP from USB)
 
 ## Tested OpenWRT Versions
 
+- OpenWRT 24.10.0-rc2
 - OpenWRT 23.05.4
 - ImmortalWrt 23.05-SNAPSHOT (r27946-868b12b200)
 
@@ -34,7 +36,7 @@ git clone https://github.com/cyyself/mt7981-usb-sfp-patcher.git
 cd mt7981-usb-sfp-patcher
 ```
 
-#### For OpenWRT Origin version
+#### For OpenWRT ITB firmware
 
 1. Patch the firmware
 
@@ -79,7 +81,11 @@ diff build/orig.dts build/patched.dts
 It's normal to get a warning "Image check failed", but "Force upgrade" should work.
 
 
-#### For ImmortalWrt with custom U-Boot layout
+#### For any installed firmware stored in ubi0_0
+
+Tested device / software:
+- CMCC RAX3000M with ImmortalWrt 23.05 custom U-Boot layout
+- Cudy TR3000 with OpenWRT 24.10.0-rc2
 
 1. Dump [kernel raw image](https://openwrt.org/docs/techref/flash.layout#partitioning_of_nand_flash-based_devices) from device
 
