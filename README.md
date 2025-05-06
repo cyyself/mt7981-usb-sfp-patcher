@@ -1,17 +1,14 @@
-# mt7981-usb-sfp-patcher
+# tr3000-ubootmod-512m-flash-patcher
 
-Patch existing OpenWRT firmware to use the USB3 on the MT7981 to connect to 2500Base-X SFP module. Support both OpenWrt U-Boot layout and custom U-Boot layout
+Patch existing OpenWRT firmware to use the 512M flash of cudy TR3000.
 
 ## Tested Device
 
-- CMCC RAX3000M (3x1G ETH + 2.5G SFP from USB)
-- Cudy TR3000 (2.5G ETH + 2.5G SFP from USB)
+- Cudy TR3000 (with prebuilt 512M U-Boot with ubi reg = <0x5c0000 0x1fa40000>)
 
 ## Tested OpenWRT Versions
 
-- OpenWRT 24.10.0-rc2
-- OpenWRT 23.05.4
-- ImmortalWrt 23.05-SNAPSHOT (r27946-868b12b200)
+- ImmortalWrt 24.10.1 (ubootmod)
 
 ## How to use
 
@@ -32,7 +29,7 @@ Homebrew: `brew install u-boot-tools dtc`
 1. Clone this repository
 
 ```bash
-git clone https://github.com/cyyself/mt7981-usb-sfp-patcher.git
+git clone https://github.com/cyyself/mt7981-usb-sfp-patcher.git -b tr3000-ubootmod-512m-flash
 cd mt7981-usb-sfp-patcher
 ```
 
@@ -41,8 +38,8 @@ cd mt7981-usb-sfp-patcher
 1. Patch the firmware
 
 ```bash
-wget https://downloads.openwrt.org/releases/23.05.4/targets/mediatek/filogic/openwrt-23.05.4-mediatek-filogic-cmcc_rax3000m-squashfs-sysupgrade.itb
-python3 patch_itb.py openwrt-23.05.4-mediatek-filogic-cmcc_rax3000m-squashfs-sysupgrade.itb patched.itb
+wget https://downloads.immortalwrt.org/releases/24.10.1/targets/mediatek/filogic/immortalwrt-24.10.1-mediatek-filogic-cudy_tr3000-v1-ubootmod-squashfs-sysupgrade.itb
+python3 patch_itb.py immortalwrt-24.10.1-mediatek-filogic-cudy_tr3000-v1-ubootmod-squashfs-sysupgrade.itb patched.itb
 ```
 
 2. (Optional) Verify the patched dts
@@ -52,71 +49,12 @@ diff build/orig.dts build/patched.dts
 ```
 
 ```diff
-8c8
-<       model = "CMCC RAX3000M";
+362c362
+<                                               reg = <0x5c0000 0x7a40000>;
 ---
->       model = "CMCC RAX3000M with USB3SFP";
-549,551c549,550
-<                       phy-mode = "gmii";
-<                       phy-handle = <0x1f>;
-<                       phandle = <0x39>;
----
->                       phy-mode = "2500base-x";
->                       managed = "in-band-status";
-686c685
-<               phys = <0x21 0x03 0x0f 0x04>;
----
->               phys = <0x21 0x03>;
-689a689
->               mediatek,u3p-dis-msk = <0x01>;
-931c931
-< };
----
-> };
-\ No newline at end of file
+>                                               reg = <0x5c0000 0x1fa40000>;
 ```
 
 3. Use `sysupgrade -F` or LuCI to flash the patched firmware
 
 It's normal to get a warning "Image check failed", but "Force upgrade" should work.
-
-
-#### For any installed firmware stored in ubi0_0
-
-Tested device / software:
-- CMCC RAX3000M with ImmortalWrt 23.05 custom U-Boot layout
-- Cudy TR3000 with OpenWRT 24.10.0-rc2
-
-1. Dump [kernel raw image](https://openwrt.org/docs/techref/flash.layout#partitioning_of_nand_flash-based_devices) from device
-
-```sh
-ssh root@192.168.1.1 dd if=/dev/ubi0_0 of=/tmp/kernel
-scp -O root@192.168.1.1:/tmp/kernel ./kernel
-```
-
-2. Patch the kernel
-
-```sh
-python3 patch_itb.py ./kernel ./kernel-patched
-```
-
-3. Flash the patched kernel
-
-```sh
-scp -O ./kernel-patched root@192.168.1.1:/tmp/
-ssh root@192.168.1.1 ubiupdatevol /dev/ubi0_0 /tmp/kernel-patched
-```
-
-Now reboot your device.
-
-## Limitation
-
-Since there are only 2 Ethernet MACs in the MT7981 SoC, If your router uses both of them for WAN and LAN (e.g. CMCC RAX300M), the original eth1 (typically WAN port) will be disabled.
-
-## For OpenWRT Developers / Advanced Users
-
-Please see [this dts patch](https://gist.github.com/cyyself/7d3de89a5b3a063acf5fa2c32f0373dd).
-
-## Notice
-
-[A patch to enable the flow control of the SFP module](https://github.com/openwrt/openwrt/pull/16136) is under review.
